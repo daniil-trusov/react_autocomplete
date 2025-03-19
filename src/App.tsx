@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useCallback, useState } from 'react';
 import './App.scss';
 import { peopleFromServer } from './data/people';
 import { Person } from './types/Person';
@@ -28,19 +29,17 @@ function debounce(callback: Function, delay: number) {
 
 export const App: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const [selectedPersonName, setSelectedPersonId] = useState('');
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
 
   const peopleList: Person[] = filterPeople(peopleFromServer, appliedQuery);
 
-  const selectedPerson = useMemo(
-    () => peopleList.find(person => person.name === selectedPersonName),
-    [selectedPersonName, peopleList],
-  );
-
   const applyQuery = useCallback(debounce(setAppliedQuery, 300), []);
-  const unfocus = useCallback(debounce(setIsVisible, 150), []);
+  const unfocus = useCallback(
+    debounce(() => setIsVisible(false), 150),
+    [],
+  );
 
   const search = (query: string) => {
     setSearchQuery(query);
@@ -48,13 +47,13 @@ export const App: React.FC = () => {
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedPersonId('');
+    setSelectedPerson(null);
     search(event.target.value);
   };
 
-  const handleOptionClick = (personName: string) => {
-    setSelectedPersonId(personName);
-    search(personName);
+  const handleOptionClick = (person: Person) => {
+    setSelectedPerson(person);
+    search(person.name);
     setIsVisible(false);
   };
 
@@ -77,22 +76,18 @@ export const App: React.FC = () => {
               value={searchQuery}
               onChange={handleInputChange}
               onFocus={() => setIsVisible(true)}
+              onBlur={() => unfocus()}
             />
           </div>
 
-          <div
-            className="dropdown-menu"
-            role="menu"
-            data-cy="suggestions-list"
-            onBlur={() => setIsVisible(false)}
-          >
+          <div className="dropdown-menu" role="menu" data-cy="suggestions-list">
             <div className="dropdown-content">
               {peopleList.map(person => (
                 <div
                   key={person.slug}
                   className="dropdown-item"
                   data-cy="suggestion-item"
-                  onClick={() => handleOptionClick(person.name)}
+                  onClick={() => handleOptionClick(person)}
                 >
                   <p className="has-text-link">{person.name}</p>
                 </div>
