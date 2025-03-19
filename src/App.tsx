@@ -1,73 +1,121 @@
-import React from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import './App.scss';
 import { peopleFromServer } from './data/people';
+import { Person } from './types/Person';
+import cn from 'classnames';
+
+function filterPeople(people: Person[], searchQuery: string): Person[] {
+  const searchLower = searchQuery.toLowerCase().trim();
+
+  return people.filter(person => {
+    const nameLower = person.name.toLowerCase();
+
+    return nameLower.includes(searchLower);
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+function debounce(callback: Function, delay: number) {
+  let timerId = 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (...args: any) => {
+    window.clearTimeout(timerId);
+
+    timerId = window.setTimeout(() => callback(...args), delay);
+  };
+}
 
 export const App: React.FC = () => {
-  const { name, born, died } = peopleFromServer[0];
+  const [isVisible, setIsVisible] = useState(false);
+  const [selectedPersonName, setSelectedPersonId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
+
+  const peopleList: Person[] = filterPeople(peopleFromServer, appliedQuery);
+
+  const selectedPerson = useMemo(
+    () => peopleList.find(person => person.name === selectedPersonName),
+    [selectedPersonName, peopleList],
+  );
+
+  const applyQuery = useCallback(debounce(setAppliedQuery, 300), []);
+  const unfocus = useCallback(debounce(setIsVisible, 150), []);
+
+  const search = (query: string) => {
+    setSearchQuery(query);
+    applyQuery(query);
+  };
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedPersonId('');
+    search(event.target.value);
+  };
+
+  const handleOptionClick = (personName: string) => {
+    setSelectedPersonId(personName);
+    search(personName);
+    setIsVisible(false);
+  };
 
   return (
     <div className="container">
       <main className="section is-flex is-flex-direction-column">
         <h1 className="title" data-cy="title">
-          {`${name} (${born} - ${died})`}
+          {selectedPerson?.name === appliedQuery
+            ? `${selectedPerson.name} (${selectedPerson.born} - ${selectedPerson.died})`
+            : 'No selected person'}
         </h1>
 
-        <div className="dropdown is-active">
+        <div className={cn('dropdown', { 'is-active': isVisible })}>
           <div className="dropdown-trigger">
             <input
               type="text"
               placeholder="Enter a part of the name"
               className="input"
               data-cy="search-input"
+              value={searchQuery}
+              onChange={handleInputChange}
+              onFocus={() => setIsVisible(true)}
             />
           </div>
 
-          <div className="dropdown-menu" role="menu" data-cy="suggestions-list">
+          <div
+            className="dropdown-menu"
+            role="menu"
+            data-cy="suggestions-list"
+            onBlur={() => setIsVisible(false)}
+          >
             <div className="dropdown-content">
-              <div className="dropdown-item" data-cy="suggestion-item">
-                <p className="has-text-link">Pieter Haverbeke</p>
-              </div>
-
-              <div className="dropdown-item" data-cy="suggestion-item">
-                <p className="has-text-link">Pieter Bernard Haverbeke</p>
-              </div>
-
-              <div className="dropdown-item" data-cy="suggestion-item">
-                <p className="has-text-link">Pieter Antone Haverbeke</p>
-              </div>
-
-              <div className="dropdown-item" data-cy="suggestion-item">
-                <p className="has-text-danger">Elisabeth Haverbeke</p>
-              </div>
-
-              <div className="dropdown-item" data-cy="suggestion-item">
-                <p className="has-text-link">Pieter de Decker</p>
-              </div>
-
-              <div className="dropdown-item" data-cy="suggestion-item">
-                <p className="has-text-danger">Petronella de Decker</p>
-              </div>
-
-              <div className="dropdown-item" data-cy="suggestion-item">
-                <p className="has-text-danger">Elisabeth Hercke</p>
-              </div>
+              {peopleList.map(person => (
+                <div
+                  key={person.slug}
+                  className="dropdown-item"
+                  data-cy="suggestion-item"
+                  onClick={() => handleOptionClick(person.name)}
+                >
+                  <p className="has-text-link">{person.name}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        <div
-          className="
+        {peopleList.length < 1 && (
+          <div
+            className="
             notification
             is-danger
             is-light
             mt-3
             is-align-self-flex-start
           "
-          role="alert"
-          data-cy="no-suggestions-message"
-        >
-          <p className="has-text-danger">No matching suggestions</p>
-        </div>
+            role="alert"
+            data-cy="no-suggestions-message"
+          >
+            <p className="has-text-danger">No matching suggestions</p>
+          </div>
+        )}
       </main>
     </div>
   );
