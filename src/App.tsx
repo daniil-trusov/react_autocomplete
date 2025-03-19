@@ -1,12 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import './App.scss';
 import { peopleFromServer } from './data/people';
 import { Person } from './types/Person';
 import cn from 'classnames';
 
 function filterPeople(people: Person[], searchQuery: string): Person[] {
-  const searchLower = searchQuery.toLowerCase().trim();
+  const searchLower = searchQuery.toLowerCase();
 
   return people.filter(person => {
     const nameLower = person.name.toLowerCase();
@@ -33,7 +33,10 @@ export const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
 
-  const peopleList: Person[] = filterPeople(peopleFromServer, appliedQuery);
+  const peopleList: Person[] = useMemo(
+    () => filterPeople(peopleFromServer, appliedQuery),
+    [appliedQuery],
+  );
 
   const applyQuery = useCallback(debounce(setAppliedQuery, 300), []);
   const unfocus = useCallback(
@@ -41,19 +44,19 @@ export const App: React.FC = () => {
     [],
   );
 
-  const search = (query: string) => {
-    setSearchQuery(query);
-    applyQuery(query);
-  };
-
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+
     setSelectedPerson(null);
-    search(event.target.value);
+    setSearchQuery(value);
+    applyQuery(value);
   };
 
   const handleOptionClick = (person: Person) => {
+    const value = person.name;
+
     setSelectedPerson(person);
-    search(person.name);
+    setSearchQuery(value);
     setIsVisible(false);
   };
 
@@ -61,7 +64,7 @@ export const App: React.FC = () => {
     <div className="container">
       <main className="section is-flex is-flex-direction-column">
         <h1 className="title" data-cy="title">
-          {selectedPerson?.name === appliedQuery
+          {selectedPerson
             ? `${selectedPerson.name} (${selectedPerson.born} - ${selectedPerson.died})`
             : 'No selected person'}
         </h1>
@@ -80,23 +83,29 @@ export const App: React.FC = () => {
             />
           </div>
 
-          <div className="dropdown-menu" role="menu" data-cy="suggestions-list">
-            <div className="dropdown-content">
-              {peopleList.map(person => (
-                <div
-                  key={person.slug}
-                  className="dropdown-item"
-                  data-cy="suggestion-item"
-                  onClick={() => handleOptionClick(person)}
-                >
-                  <p className="has-text-link">{person.name}</p>
-                </div>
-              ))}
+          {isVisible && !!peopleList.length && (
+            <div
+              className="dropdown-menu"
+              role="menu"
+              data-cy="suggestions-list"
+            >
+              <div className="dropdown-content">
+                {peopleList.map(person => (
+                  <div
+                    key={person.slug}
+                    className="dropdown-item"
+                    data-cy="suggestion-item"
+                    onClick={() => handleOptionClick(person)}
+                  >
+                    <p className="has-text-link">{person.name}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {peopleList.length < 1 && (
+        {!peopleList.length && (
           <div
             className="
             notification
