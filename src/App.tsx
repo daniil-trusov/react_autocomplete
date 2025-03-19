@@ -6,7 +6,7 @@ import { Person } from './types/Person';
 import cn from 'classnames';
 
 function filterPeople(people: Person[], searchQuery: string): Person[] {
-  const searchLower = searchQuery.toLowerCase();
+  const searchLower = searchQuery.toLowerCase().trim();
 
   return people.filter(person => {
     const nameLower = person.name.toLowerCase();
